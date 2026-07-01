@@ -1,0 +1,8 @@
+allowBuilds:
+  '@scarf/scarf': false
+  '@swc/core': true
+  argon2: true
+  core-js: false
+  leveldown: set this to true or false
+  nodemon: true
+  unrs-resolver: true
