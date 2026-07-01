@@ -1,0 +1,46 @@
+services:
+  mongodb:
+    image: mongo:7
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "27020:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: >
+        mongosh --quiet --eval
+        "try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0', members:[{_id:0, host:'mongodb:27017'}]}).ok }"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build:
+      context: ./backend/test_backend
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      PORT: 3002
+      MONGODB_URI: mongodb://host.docker.internal:27020/bito_test?replicaSet=rs0&directConnection=true
+      JWT_SECRET: do_not_use_this_secret_in_production
+      JWT_EXPIRATION: 3600
+      PAYMENT_WEBHOOK_SECRET: dev_payment_secret_change_me
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "3002:3002"
+    command: sh -c "node scripts/seed-demo.js && node dist/main.js"
+
+  frontend:
+    build:
+      context: ./fronted
+      args:
+        VITE_API_BASE_URL: http://localhost:3002/api
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+
+volumes:
+  mongodb_data:
